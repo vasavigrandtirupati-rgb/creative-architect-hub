@@ -25,10 +25,10 @@ const AboutSection = () => {
           viewport={{ once: true, margin: "-100px" }}
           className="mb-16"
         >
-          <motion.h2 variants={fadeUp} custom={0} className="text-4xl md:text-6xl font-heading font-bold mb-2">
+          <motion.h2 variants={fadeUp} custom={0} className="text-4xl md:text-6xl font-display mb-2">
             ABOUT
           </motion.h2>
-          <motion.p variants={fadeUp} custom={1} className="text-4xl md:text-6xl font-heading font-bold opacity-70">
+          <motion.p variants={fadeUp} custom={1} className="text-4xl md:text-6xl font-display opacity-70">
             THE DEVELOPER
           </motion.p>
         </motion.div>

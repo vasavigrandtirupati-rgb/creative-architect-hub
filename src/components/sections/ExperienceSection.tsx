@@ -9,7 +9,7 @@ const ExperienceSection = () => {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-4xl md:text-5xl font-heading font-bold mb-16"
+          className="text-4xl md:text-5xl font-display mb-16"
         >
           WORK EXPERIENCE
           <span className="block w-16 h-1 bg-accent mt-3" />

@@ -13,7 +13,7 @@ const ProjectsSection = () => {
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-4xl md:text-5xl font-heading font-bold"
+            className="text-4xl md:text-5xl font-display"
           >
             SELECTED WORKS
             <span className="block w-16 h-1 bg-accent mt-3" />

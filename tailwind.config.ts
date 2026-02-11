@@ -14,6 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
+        display: ["'Bungee'", "sans-serif"],
         heading: ["'Space Grotesk'", "sans-serif"],
         body: ["'Inter'", "sans-serif"],
       },

@@ -15,7 +15,7 @@ const StatsSection = () => {
               transition={{ delay: i * 0.1 }}
               className="text-center"
             >
-              <p className="text-4xl md:text-5xl font-heading font-bold text-primary mb-2">
+              <p className="text-4xl md:text-5xl font-display text-primary mb-2">
                 {stat.value}
               </p>
               <p className="text-xs uppercase tracking-wider opacity-70">{stat.label}</p>
