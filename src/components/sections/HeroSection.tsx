@@ -38,7 +38,7 @@ const HeroSection = () => {
             Available for Freelance
           </span>
 
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-heading font-bold leading-[0.95] mb-6">
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-display leading-[0.95] mb-6">
             {name.split(" ").map((word, i) => (
               <span key={i} className="block">{word}</span>
             ))}

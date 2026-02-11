@@ -20,7 +20,7 @@ const ContactSection = () => {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-4xl md:text-5xl font-heading font-bold text-center mb-4"
+          className="text-4xl md:text-5xl font-display text-center mb-4"
         >
           LET'S BUILD SOMETHING
         </motion.h2>
