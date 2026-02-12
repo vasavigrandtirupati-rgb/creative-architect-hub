@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
-import { siteData } from "@/data/data";
 import { motion, AnimatePresence } from "framer-motion";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState("");
   const location = useLocation();
 
   useEffect(() => {
@@ -15,11 +15,40 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Intersection Observer for active section tracking
+  useEffect(() => {
+    if (location.pathname !== "/") return;
+
+    const sections = ["about", "services", "projects", "contact"];
+    const observers: IntersectionObserver[] = [];
+
+    const handleIntersect = (id: string) => (entries: IntersectionObserverEntry[]) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          setActiveSection(id);
+        }
+      });
+    };
+
+    sections.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const observer = new IntersectionObserver(handleIntersect(id), {
+        rootMargin: "-30% 0px -60% 0px",
+        threshold: 0,
+      });
+      observer.observe(el);
+      observers.push(observer);
+    });
+
+    return () => observers.forEach(o => o.disconnect());
+  }, [location.pathname]);
+
   const navLinks = [
-    { href: "#about", label: "About" },
-    { href: "#services", label: "Services" },
-    { href: "#projects", label: "Portfolio" },
-    { href: "#contact", label: "Contact" },
+    { href: "#about", label: "About", id: "about" },
+    { href: "#services", label: "Services", id: "services" },
+    { href: "#projects", label: "Portfolio", id: "projects" },
+    { href: "#contact", label: "Contact", id: "contact" },
   ];
 
   const scrollTo = (id: string) => {
@@ -45,9 +74,18 @@ const Navbar = () => {
             <button
               key={link.href}
               onClick={() => scrollTo(link.href)}
-              className="accent-underline font-medium text-sm uppercase tracking-wider"
+              className={`relative font-medium text-sm uppercase tracking-wider transition-colors ${
+                activeSection === link.id ? "text-accent" : ""
+              }`}
             >
               {link.label}
+              {activeSection === link.id && (
+                <motion.span
+                  layoutId="nav-indicator"
+                  className="absolute -bottom-1 left-0 right-0 h-[3px] bg-accent rounded-full"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
             </button>
           ))}
           <Link
@@ -78,7 +116,9 @@ const Navbar = () => {
                 <button
                   key={link.href}
                   onClick={() => scrollTo(link.href)}
-                  className="text-left font-medium text-sm uppercase tracking-wider py-2"
+                  className={`text-left font-medium text-sm uppercase tracking-wider py-2 ${
+                    activeSection === link.id ? "text-accent" : ""
+                  }`}
                 >
                   {link.label}
                 </button>

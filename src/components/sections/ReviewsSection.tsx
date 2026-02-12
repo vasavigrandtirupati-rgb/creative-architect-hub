@@ -1,11 +1,13 @@
-import { siteData } from "@/data/data";
+import { useSiteData } from "@/context/SiteDataContext";
 import { motion } from "framer-motion";
 import { Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 const ReviewsSection = () => {
+  const { reviews } = useSiteData();
   const [current, setCurrent] = useState(0);
-  const reviews = siteData.reviews;
+
+  if (reviews.length === 0) return null;
 
   const next = () => setCurrent((c) => (c + 1) % reviews.length);
   const prev = () => setCurrent((c) => (c - 1 + reviews.length) % reviews.length);
@@ -31,11 +33,16 @@ const ReviewsSection = () => {
         >
           <div className="bg-card rounded-lg p-8 accent-shadow text-center">
             {/* Avatar */}
-            <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-4">
-              <span className="font-heading font-bold text-xl text-accent">
-                {reviews[current].clientName.charAt(0)}
-              </span>
-            </div>
+            {reviews[current].image ? (
+              <img src={reviews[current].image} alt={reviews[current].clientName}
+                className="w-16 h-16 rounded-full object-cover mx-auto mb-4" />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-4">
+                <span className="font-heading font-bold text-xl text-accent">
+                  {reviews[current].clientName.charAt(0)}
+                </span>
+              </div>
+            )}
 
             {/* Stars */}
             <div className="flex justify-center gap-1 mb-4">
