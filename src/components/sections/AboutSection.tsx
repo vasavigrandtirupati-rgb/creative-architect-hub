@@ -1,4 +1,5 @@
 import { siteData } from "@/data/data";
+import { useSiteData } from "@/context/SiteDataContext";
 import { motion } from "framer-motion";
 import { MapPin, Clock, Download } from "lucide-react";
 
@@ -9,12 +10,23 @@ const fadeUp = {
 
 const AboutSection = () => {
   const { personalInfo, skills } = siteData;
+  const { resumeUrl } = useSiteData();
+
   const skillCategories = [
     { title: "Frontend", items: skills.frontend },
     { title: "Backend", items: skills.backend },
     { title: "DevOps", items: skills.devops },
     { title: "Marketing", items: skills.marketing },
   ];
+
+  const handleDownloadResume = () => {
+    if (resumeUrl && resumeUrl !== "#") {
+      const a = document.createElement("a");
+      a.href = resumeUrl;
+      a.download = "resume";
+      a.click();
+    }
+  };
 
   return (
     <section id="about" className="bg-primary section-padding">
@@ -34,7 +46,6 @@ const AboutSection = () => {
         </motion.div>
 
         <div className="grid lg:grid-cols-3 gap-8 mb-16">
-          {/* Summary */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -50,7 +61,6 @@ const AboutSection = () => {
             ))}
           </motion.div>
 
-          {/* Info cards */}
           <div className="flex flex-col gap-4">
             <motion.div
               initial={{ opacity: 0, x: 30 }}
@@ -85,6 +95,7 @@ const AboutSection = () => {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.4 }}
+              onClick={handleDownloadResume}
               className="bg-card rounded-lg p-6 accent-shadow cursor-pointer card-hover"
             >
               <div className="flex items-center gap-2">
