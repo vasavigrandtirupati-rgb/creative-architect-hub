@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, memo } from "react";
 import { Link } from "react-router-dom";
 import { useSiteData, MediaItem } from "@/context/SiteDataContext";
 import { Project, WorkExperience, Review } from "@/data/data";
@@ -11,6 +11,18 @@ import {
 } from "@/components/ui/dialog";
 
 type Tab = "dashboard" | "projects" | "experience" | "reviews" | "services" | "media";
+
+// ─── Input component helper (outside Admin to prevent re-mount) ───
+const InputField = memo(({ label, value, onChange, placeholder, type = "text" }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
+}) => (
+  <div>
+    <label className="text-xs font-semibold uppercase tracking-wider opacity-60 block mb-1">{label}</label>
+    <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+      className="w-full bg-secondary border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+  </div>
+));
+InputField.displayName = "InputField";
 
 const emptyProject: Project = {
   id: "", title: "", description: "", techStack: [], status: "idea",
@@ -203,16 +215,7 @@ const Admin = () => {
     setResumeModal(false);
   };
 
-  // ─── Input component helper ───
-  const InputField = ({ label, value, onChange, placeholder, type = "text" }: {
-    label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
-  }) => (
-    <div>
-      <label className="text-xs font-semibold uppercase tracking-wider opacity-60 block mb-1">{label}</label>
-      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full bg-secondary border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-    </div>
-  );
+  // InputField moved outside component to prevent focus loss
 
   return (
     <div className="min-h-screen bg-secondary flex">
