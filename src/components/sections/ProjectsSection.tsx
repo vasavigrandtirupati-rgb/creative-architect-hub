@@ -33,7 +33,7 @@ const ProjectsSection = () => {
             effect="coverflow"
             grabCursor
             centeredSlides
-            loop={publishedProjects.length > 2}
+            loop={publishedProjects.length >= 3}
             coverflowEffect={{
               rotate: 12,
               stretch: 0,

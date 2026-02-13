@@ -25,7 +25,7 @@ const AchievementsSection = () => {
           effect="coverflow"
           grabCursor
           centeredSlides
-          loop={siteData.achievements.length > 3}
+          loop={siteData.achievements.length >= 4}
           coverflowEffect={{
             rotate: 20,
             stretch: 0,

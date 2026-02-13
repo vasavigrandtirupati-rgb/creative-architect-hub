@@ -28,17 +28,18 @@ const HeroSection = () => {
   return (
     <section className="relative min-h-screen flex items-center bg-primary overflow-hidden">
       {/* Floating elements */}
-      {floatingItems.map((item, i) => {}
+      {floatingItems.map((item, i) => (
+        <motion.div
+          key={i}
+          className="absolute text-accent opacity-30 hidden lg:block"
+          style={{ left: item.x, top: item.y }}
+          animate={{ y: [0, -10, 0] }}
+          transition={{ duration: 3, repeat: Infinity, delay: item.delay }}
+        >
+          {item.icon}
+        </motion.div>
+      ))}
 
-
-
-
-
-
-
-
-
-      )}
 
       <div className="container mx-auto section-padding pt-32">
         <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
@@ -90,7 +91,7 @@ const HeroSection = () => {
               grabCursor
               centeredSlides
               slidesPerView="auto"
-              loop
+              loop={heroImages.length >= 5}
               coverflowEffect={{
                 rotate: 25,
                 stretch: 0,
