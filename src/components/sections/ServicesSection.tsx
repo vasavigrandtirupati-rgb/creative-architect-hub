@@ -1,5 +1,10 @@
 import { siteData } from "@/data/data";
 import { motion } from "framer-motion";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { EffectCoverflow, Autoplay, Pagination } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/effect-coverflow";
+import "swiper/css/pagination";
 
 const ServicesSection = () => {
   const enabledServices = siteData.services.filter((s) => s.enabled);
@@ -28,25 +33,44 @@ const ServicesSection = () => {
           </motion.p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-6">
-          {enabledServices.map((service, i) => (
-            <motion.div
-              key={service.id}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-              whileHover={{ y: -6 }}
-              className="bg-card rounded-lg p-6 accent-shadow cursor-pointer transition-shadow"
-            >
-              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-4 text-foreground">
-                {service.icon}
-              </div>
-              <h3 className="font-heading font-bold text-sm mb-2">{service.title}</h3>
-              <p className="text-xs opacity-70 leading-relaxed">{service.description}</p>
-            </motion.div>
+        <Swiper
+          effect="coverflow"
+          grabCursor
+          centeredSlides
+          slidesPerView="auto"
+          loop={enabledServices.length > 3}
+          coverflowEffect={{
+            rotate: 15,
+            stretch: 0,
+            depth: 150,
+            modifier: 1,
+            slideShadows: false,
+          }}
+          autoplay={{ delay: 2500, disableOnInteraction: false }}
+          pagination={{ clickable: true }}
+          modules={[EffectCoverflow, Autoplay, Pagination]}
+          breakpoints={{
+            0: { slidesPerView: 1.2 },
+            640: { slidesPerView: 2 },
+            1024: { slidesPerView: 3 },
+          }}
+          className="services-swiper !pb-12"
+        >
+          {enabledServices.map((service) => (
+            <SwiperSlide key={service.id} className="!h-auto">
+              <motion.div
+                whileHover={{ y: -6 }}
+                className="bg-card rounded-lg p-6 accent-shadow cursor-pointer transition-shadow h-full"
+              >
+                <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-4 text-foreground">
+                  {service.icon}
+                </div>
+                <h3 className="font-heading font-bold text-sm mb-2">{service.title}</h3>
+                <p className="text-xs opacity-70 leading-relaxed">{service.description}</p>
+              </motion.div>
+            </SwiperSlide>
           ))}
-        </div>
+        </Swiper>
       </div>
     </section>
   );
