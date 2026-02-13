@@ -29,7 +29,7 @@ const ReviewsSection = () => {
           effect="coverflow"
           grabCursor
           centeredSlides
-          loop={reviews.length > 2}
+          loop={reviews.length >= 3}
           coverflowEffect={{
             rotate: 10,
             stretch: 0,

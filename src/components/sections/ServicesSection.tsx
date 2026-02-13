@@ -38,7 +38,7 @@ const ServicesSection = () => {
           grabCursor
           centeredSlides
           slidesPerView="auto"
-          loop={enabledServices.length > 3}
+          loop={enabledServices.length >= 4}
           coverflowEffect={{
             rotate: 15,
             stretch: 0,
