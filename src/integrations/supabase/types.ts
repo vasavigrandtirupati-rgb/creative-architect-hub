@@ -14,7 +14,159 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      media: {
+        Row: {
+          id: string
+          name: string
+          size: number
+          type: string
+          uploaded_at: string
+          url: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          size?: number
+          type?: string
+          uploaded_at?: string
+          url: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          size?: number
+          type?: string
+          uploaded_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          created_at: string
+          deadline: string | null
+          description: string
+          github_link: string | null
+          id: string
+          image_urls: string[]
+          is_published: boolean
+          live_link: string | null
+          status: string
+          tasks: Json
+          tech_stack: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deadline?: string | null
+          description?: string
+          github_link?: string | null
+          id?: string
+          image_urls?: string[]
+          is_published?: boolean
+          live_link?: string | null
+          status?: string
+          tasks?: Json
+          tech_stack?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deadline?: string | null
+          description?: string
+          github_link?: string | null
+          id?: string
+          image_urls?: string[]
+          is_published?: boolean
+          live_link?: string | null
+          status?: string
+          tasks?: Json
+          tech_stack?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          client_name: string
+          company: string
+          created_at: string
+          id: string
+          image_url: string | null
+          rating: number
+          review_text: string
+        }
+        Insert: {
+          client_name: string
+          company?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          rating?: number
+          review_text: string
+        }
+        Update: {
+          client_name?: string
+          company?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          rating?: number
+          review_text?: string
+        }
+        Relationships: []
+      }
+      site_settings: {
+        Row: {
+          id: string
+          resume_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          resume_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          resume_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      work_experience: {
+        Row: {
+          company: string
+          contributions: string[]
+          created_at: string
+          duration: string
+          id: string
+          role: string
+          sort_order: number
+        }
+        Insert: {
+          company: string
+          contributions?: string[]
+          created_at?: string
+          duration: string
+          id?: string
+          role: string
+          sort_order?: number
+        }
+        Update: {
+          company?: string
+          contributions?: string[]
+          created_at?: string
+          duration?: string
+          id?: string
+          role?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
