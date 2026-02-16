@@ -1,4 +1,4 @@
-import { siteData } from "@/data/data";
+import { useSiteData } from "@/context/SiteDataContext";
 import { motion } from "framer-motion";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { EffectCoverflow, Autoplay, Pagination } from "swiper/modules";
@@ -7,7 +7,8 @@ import "swiper/css/effect-coverflow";
 import "swiper/css/pagination";
 
 const ServicesSection = () => {
-  const enabledServices = siteData.services.filter((s) => s.enabled);
+  const { services } = useSiteData();
+  const enabledServices = services.filter((s) => s.enabled);
 
   return (
     <section id="services" className="bg-secondary section-padding">

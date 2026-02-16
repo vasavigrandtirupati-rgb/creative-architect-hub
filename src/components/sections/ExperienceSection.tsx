@@ -1,7 +1,11 @@
-import { siteData } from "@/data/data";
+import { useSiteData } from "@/context/SiteDataContext";
 import { motion } from "framer-motion";
 
 const ExperienceSection = () => {
+  const { workExperience } = useSiteData();
+
+  if (workExperience.length === 0) return null;
+
   return (
     <section id="experience" className="bg-primary section-padding">
       <div className="container mx-auto">
@@ -20,7 +24,7 @@ const ExperienceSection = () => {
           <div className="absolute left-4 md:left-8 top-0 bottom-0 w-0.5 bg-accent/40" />
 
           <div className="space-y-12">
-            {siteData.workExperience.map((exp, i) => (
+            {workExperience.map((exp, i) => (
               <motion.div
                 key={exp.id}
                 initial={{ opacity: 0, x: -30 }}

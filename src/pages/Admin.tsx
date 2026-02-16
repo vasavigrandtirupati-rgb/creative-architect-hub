@@ -1,10 +1,13 @@
-import { useState, useRef, memo } from "react";
-import { Link } from "react-router-dom";
+import { useState, useRef, memo, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useSiteData, MediaItem } from "@/context/SiteDataContext";
 import { Project, WorkExperience, Review } from "@/data/data";
+import { useAuth } from "@/hooks/useAuth";
+import { uploadFile, deleteFile } from "@/lib/storage";
+import { useToast } from "@/hooks/use-toast";
 import {
   LayoutDashboard, FolderOpen, Briefcase, MessageSquare, Settings, Image as ImageIcon,
-  Plus, Edit, Trash2, Eye, EyeOff, ChevronLeft, X, Check, Upload, FileText, Star, Circle,
+  Plus, Edit, Trash2, Eye, EyeOff, ChevronLeft, X, Check, Upload, FileText, Star, Circle, LogOut,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -12,7 +15,6 @@ import {
 
 type Tab = "dashboard" | "projects" | "experience" | "reviews" | "services" | "media";
 
-// ─── Input component helper (outside Admin to prevent re-mount) ───
 const InputField = memo(({ label, value, onChange, placeholder, type = "text" }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
 }) => (
@@ -37,28 +39,21 @@ const emptyReview: Review = {
   id: "", clientName: "", company: "", image: "", reviewText: "", rating: 5,
 };
 
-// Helper to read file as data URL
-const readFileAsDataUrl = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-
 const Admin = () => {
+  const { user, loading: authLoading, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
   const {
     projects, workExperience, reviews, services, resumeUrl, media,
     addProject, updateProject, deleteProject, togglePublish,
     addExperience, updateExperience, deleteExperience,
     addReview, updateReview, deleteReview,
     updateService, setResumeUrl,
-    addMedia, deleteMedia, updateMedia,
+    addMedia, deleteMedia,
   } = useSiteData();
 
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
-
-  // Modals
   const [projectModal, setProjectModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project>(emptyProject);
   const [expModal, setExpModal] = useState(false);
@@ -67,16 +62,28 @@ const Admin = () => {
   const [editingReview, setEditingReview] = useState<Review>(emptyReview);
   const [resumeModal, setResumeModal] = useState(false);
 
-  // Temp fields
   const [techInput, setTechInput] = useState("");
   const [taskInput, setTaskInput] = useState("");
   const [contribInput, setContribInput] = useState("");
   const [projectImages, setProjectImages] = useState<string[]>([]);
   const [reviewerImage, setReviewerImage] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const resumeInputRef = useRef<HTMLInputElement>(null);
+
+  // Auth guard
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+
+  if (authLoading) {
+    return <div className="min-h-screen bg-secondary flex items-center justify-center"><p className="opacity-60">Loading...</p></div>;
+  }
+  if (!user) return null;
 
   const publishedCount = projects.filter(p => p.isPublished).length;
   const draftCount = projects.filter(p => !p.isPublished).length;
@@ -105,7 +112,7 @@ const Admin = () => {
       setEditingProject({ ...project });
       setProjectImages(project.image ? project.image.split(",").filter(Boolean) : []);
     } else {
-      setEditingProject({ ...emptyProject, id: Date.now().toString() });
+      setEditingProject({ ...emptyProject, id: "" });
       setProjectImages([]);
     }
     setTechInput("");
@@ -118,20 +125,32 @@ const Admin = () => {
     if (!files) return;
     for (const file of Array.from(files)) {
       if (!file.type.startsWith("image/")) continue;
-      const url = await readFileAsDataUrl(file);
-      setProjectImages(prev => [...prev, url]);
+      try {
+        const url = await uploadFile("project-images", file);
+        setProjectImages(prev => [...prev, url]);
+      } catch (err: any) {
+        toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+      }
     }
     e.target.value = "";
   };
 
-  const saveProject = () => {
-    const proj = { ...editingProject, image: projectImages.join(",") };
-    if (projects.find(p => p.id === proj.id)) {
-      updateProject(proj.id, proj);
-    } else {
-      addProject(proj);
+  const saveProject = async () => {
+    setSaving(true);
+    try {
+      const proj = { ...editingProject, image: projectImages.join(",") };
+      if (projects.find(p => p.id === proj.id)) {
+        await updateProject(proj.id, proj);
+      } else {
+        await addProject(proj);
+      }
+      setProjectModal(false);
+      toast({ title: "Project saved!" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
-    setProjectModal(false);
   };
 
   // ─── Experience CRUD ───
@@ -139,19 +158,27 @@ const Admin = () => {
     if (exp) {
       setEditingExp({ ...exp });
     } else {
-      setEditingExp({ ...emptyExperience, id: Date.now().toString() });
+      setEditingExp({ ...emptyExperience, id: "" });
     }
     setContribInput("");
     setExpModal(true);
   };
 
-  const saveExperience = () => {
-    if (workExperience.find(e => e.id === editingExp.id)) {
-      updateExperience(editingExp.id, editingExp);
-    } else {
-      addExperience(editingExp);
+  const saveExperience = async () => {
+    setSaving(true);
+    try {
+      if (workExperience.find(e => e.id === editingExp.id)) {
+        await updateExperience(editingExp.id, editingExp);
+      } else {
+        await addExperience(editingExp);
+      }
+      setExpModal(false);
+      toast({ title: "Experience saved!" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
-    setExpModal(false);
   };
 
   // ─── Review CRUD ───
@@ -160,7 +187,7 @@ const Admin = () => {
       setEditingReview({ ...rev });
       setReviewerImage(rev.image || "");
     } else {
-      setEditingReview({ ...emptyReview, id: Date.now().toString() });
+      setEditingReview({ ...emptyReview, id: "" });
       setReviewerImage("");
     }
     setReviewModal(true);
@@ -169,19 +196,31 @@ const Admin = () => {
   const handleReviewerImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
-    const url = await readFileAsDataUrl(file);
-    setReviewerImage(url);
+    try {
+      const url = await uploadFile("review-images", file);
+      setReviewerImage(url);
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    }
     e.target.value = "";
   };
 
-  const saveReview = () => {
-    const rev = { ...editingReview, image: reviewerImage };
-    if (reviews.find(r => r.id === rev.id)) {
-      updateReview(rev.id, rev);
-    } else {
-      addReview(rev);
+  const saveReview = async () => {
+    setSaving(true);
+    try {
+      const rev = { ...editingReview, image: reviewerImage };
+      if (reviews.find(r => r.id === rev.id)) {
+        await updateReview(rev.id, rev);
+      } else {
+        await addReview(rev);
+      }
+      setReviewModal(false);
+      toast({ title: "Review saved!" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
-    setReviewModal(false);
   };
 
   // ─── Media ───
@@ -191,16 +230,20 @@ const Admin = () => {
     for (const file of Array.from(files)) {
       const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"];
       if (!validTypes.includes(file.type)) continue;
-      const url = await readFileAsDataUrl(file);
-      const item: MediaItem = {
-        id: Date.now().toString() + Math.random().toString(36).slice(2),
-        name: file.name,
-        url,
-        type: file.type,
-        size: file.size,
-        uploadedAt: new Date().toISOString(),
-      };
-      addMedia(item);
+      try {
+        const url = await uploadFile("media-files", file);
+        const item: MediaItem = {
+          id: "",
+          name: file.name,
+          url,
+          type: file.type,
+          size: file.size,
+          uploadedAt: new Date().toISOString(),
+        };
+        await addMedia(item);
+      } catch (err: any) {
+        toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+      }
     }
     e.target.value = "";
   };
@@ -209,13 +252,16 @@ const Admin = () => {
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = await readFileAsDataUrl(file);
-    setResumeUrl(url);
+    try {
+      const url = await uploadFile("resumes", file);
+      await setResumeUrl(url);
+      toast({ title: "Resume uploaded!" });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    }
     e.target.value = "";
     setResumeModal(false);
   };
-
-  // InputField moved outside component to prevent focus loss
 
   return (
     <div className="min-h-screen bg-secondary flex">
@@ -236,18 +282,21 @@ const Admin = () => {
             </button>
           ))}
         </nav>
-        {/* Resume upload button */}
         <div className="p-4 border-t border-input space-y-3">
           <button onClick={() => setResumeModal(true)}
             className="w-full flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium hover:bg-muted transition-colors">
             <FileText size={16} /> Manage Resume
           </button>
+          <button onClick={() => { signOut(); navigate("/"); }}
+            className="w-full flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium hover:bg-destructive/10 text-destructive transition-colors">
+            <LogOut size={16} /> Sign Out
+          </button>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">
-              <span className="text-xs font-bold text-accent">A</span>
+              <span className="text-xs font-bold text-accent">{user.email?.charAt(0).toUpperCase()}</span>
             </div>
             <div>
-              <p className="text-xs font-semibold">Alex Morgan</p>
+              <p className="text-xs font-semibold truncate max-w-[140px]">{user.email}</p>
               <p className="text-[10px] opacity-60">Admin</p>
             </div>
           </div>
@@ -283,7 +332,6 @@ const Admin = () => {
                 </div>
               ))}
             </div>
-
             <div className="bg-card rounded-lg accent-shadow">
               <div className="flex items-center justify-between p-6 border-b border-input">
                 <h3 className="font-heading font-bold text-sm">RECENT PROJECTS</h3>
@@ -548,8 +596,6 @@ const Admin = () => {
                 className="w-full bg-secondary border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent min-h-[80px]"
                 placeholder="Project description" />
             </div>
-
-            {/* Tech Stack */}
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider opacity-60 block mb-1">Tech Stack</label>
               <div className="flex flex-wrap gap-2 mb-2">
@@ -568,8 +614,6 @@ const Admin = () => {
                   className="bg-primary text-foreground px-3 py-2 rounded-md text-sm font-semibold"><Plus size={14} /></button>
               </div>
             </div>
-
-            {/* Status */}
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider opacity-60 block mb-1">Status</label>
               <select value={editingProject.status}
@@ -581,12 +625,9 @@ const Admin = () => {
                 <option value="completed">Completed</option>
               </select>
             </div>
-
             <InputField label="Deadline" value={editingProject.deadline} onChange={v => setEditingProject(p => ({ ...p, deadline: v }))} type="date" />
             <InputField label="Live Link" value={editingProject.liveLink} onChange={v => setEditingProject(p => ({ ...p, liveLink: v }))} placeholder="https://..." />
             <InputField label="GitHub Link" value={editingProject.githubLink} onChange={v => setEditingProject(p => ({ ...p, githubLink: v }))} placeholder="https://github.com/..." />
-
-            {/* Tasks */}
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider opacity-60 block mb-1">Tasks</label>
               <div className="space-y-2 mb-2">
@@ -610,8 +651,6 @@ const Admin = () => {
                   className="bg-primary text-foreground px-3 py-2 rounded-md text-sm font-semibold"><Plus size={14} /></button>
               </div>
             </div>
-
-            {/* Project Images */}
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider opacity-60 block mb-1">Project Photos</label>
               <div className="grid grid-cols-3 gap-2 mb-2">
@@ -631,8 +670,6 @@ const Admin = () => {
               </button>
               <input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handleProjectImageUpload} className="hidden" />
             </div>
-
-            {/* Publish toggle */}
             <div className="flex items-center gap-3">
               <button onClick={() => setEditingProject(p => ({ ...p, isPublished: !p.isPublished }))}
                 className={`px-4 py-2 rounded-md text-sm font-semibold ${editingProject.isPublished ? "bg-green-100 text-green-800" : "bg-muted text-muted-foreground"}`}>
@@ -642,7 +679,9 @@ const Admin = () => {
           </div>
           <DialogFooter>
             <button onClick={() => setProjectModal(false)} className="px-4 py-2 rounded-md text-sm font-medium hover:bg-muted">Cancel</button>
-            <button onClick={saveProject} className="bg-primary text-foreground px-6 py-2 rounded-md text-sm font-semibold">Save Project</button>
+            <button onClick={saveProject} disabled={saving} className="bg-primary text-foreground px-6 py-2 rounded-md text-sm font-semibold disabled:opacity-50">
+              {saving ? "Saving..." : "Save Project"}
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -658,7 +697,6 @@ const Admin = () => {
             <InputField label="Company" value={editingExp.company} onChange={v => setEditingExp(e => ({ ...e, company: v }))} placeholder="Company name" />
             <InputField label="Role" value={editingExp.role} onChange={v => setEditingExp(e => ({ ...e, role: v }))} placeholder="Job title" />
             <InputField label="Duration" value={editingExp.duration} onChange={v => setEditingExp(e => ({ ...e, duration: v }))} placeholder="2020 – 2023" />
-
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider opacity-60 block mb-1">Key Contributions</label>
               <div className="space-y-2 mb-2">
@@ -680,7 +718,9 @@ const Admin = () => {
           </div>
           <DialogFooter>
             <button onClick={() => setExpModal(false)} className="px-4 py-2 rounded-md text-sm font-medium hover:bg-muted">Cancel</button>
-            <button onClick={saveExperience} className="bg-primary text-foreground px-6 py-2 rounded-md text-sm font-semibold">Save</button>
+            <button onClick={saveExperience} disabled={saving} className="bg-primary text-foreground px-6 py-2 rounded-md text-sm font-semibold disabled:opacity-50">
+              {saving ? "Saving..." : "Save"}
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -693,7 +733,6 @@ const Admin = () => {
             <DialogDescription>Fill in the review details below.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            {/* Reviewer photo */}
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider opacity-60 block mb-1">Reviewer Photo</label>
               <div className="flex items-center gap-4">
@@ -717,17 +756,14 @@ const Admin = () => {
                 }} className="text-sm font-medium accent-underline">Upload Photo</button>
               </div>
             </div>
-
             <InputField label="Client Name" value={editingReview.clientName} onChange={v => setEditingReview(r => ({ ...r, clientName: v }))} placeholder="John Doe" />
             <InputField label="Company" value={editingReview.company} onChange={v => setEditingReview(r => ({ ...r, company: v }))} placeholder="Company name" />
-
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider opacity-60 block mb-1">Review</label>
               <textarea value={editingReview.reviewText} onChange={e => setEditingReview(r => ({ ...r, reviewText: e.target.value }))}
                 className="w-full bg-secondary border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent min-h-[80px]"
                 placeholder="What the client said..." />
             </div>
-
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider opacity-60 block mb-1">Rating</label>
               <div className="flex gap-1">
@@ -741,7 +777,9 @@ const Admin = () => {
           </div>
           <DialogFooter>
             <button onClick={() => setReviewModal(false)} className="px-4 py-2 rounded-md text-sm font-medium hover:bg-muted">Cancel</button>
-            <button onClick={saveReview} className="bg-primary text-foreground px-6 py-2 rounded-md text-sm font-semibold">Save</button>
+            <button onClick={saveReview} disabled={saving} className="bg-primary text-foreground px-6 py-2 rounded-md text-sm font-semibold disabled:opacity-50">
+              {saving ? "Saving..." : "Save"}
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -759,7 +797,7 @@ const Admin = () => {
                 <FileText size={20} className="text-accent" />
                 <div className="flex-1">
                   <p className="text-sm font-medium">Resume uploaded</p>
-                  <p className="text-xs opacity-60">Click to replace</p>
+                  <a href={resumeUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-accent">View resume</a>
                 </div>
                 <button onClick={() => setResumeUrl("#")} className="p-1.5 hover:bg-destructive/10 rounded text-destructive"><Trash2 size={14} /></button>
               </div>
