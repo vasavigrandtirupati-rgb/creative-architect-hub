@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -8,6 +8,7 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState("");
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -15,18 +16,19 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Intersection Observer for active section tracking
+  // Intersection Observer — only active on homepage
   useEffect(() => {
-    if (location.pathname !== "/") return;
+    if (location.pathname !== "/") {
+      setActiveSection("");
+      return;
+    }
 
     const sections = ["about", "services", "projects", "contact"];
     const observers: IntersectionObserver[] = [];
 
     const handleIntersect = (id: string) => (entries: IntersectionObserverEntry[]) => {
       entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          setActiveSection(id);
-        }
+        if (entry.isIntersecting) setActiveSection(id);
       });
     };
 
@@ -45,16 +47,31 @@ const Navbar = () => {
   }, [location.pathname]);
 
   const navLinks = [
-    { href: "#about", label: "About", id: "about" },
+    { href: "#about",    label: "About",    id: "about" },
     { href: "#services", label: "Services", id: "services" },
     { href: "#projects", label: "Portfolio", id: "projects" },
-    { href: "#contact", label: "Contact", id: "contact" },
+    { href: "#contact",  label: "Contact",  id: "contact" },
   ];
 
-  const scrollTo = (id: string) => {
+  /**
+   * Smart scroll-to:
+   * – If already on "/", just smooth-scroll to the section.
+   * – If on another route, navigate to "/" first, then scroll after the page loads.
+   */
+  const scrollTo = (sectionId: string) => {
     setIsOpen(false);
-    const el = document.querySelector(id);
-    el?.scrollIntoView({ behavior: "smooth" });
+
+    if (location.pathname === "/") {
+      const el = document.getElementById(sectionId);
+      el?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      navigate("/");
+      // Give the home page a moment to mount before scrolling
+      setTimeout(() => {
+        const el = document.getElementById(sectionId);
+        el?.scrollIntoView({ behavior: "smooth" });
+      }, 350);
+    }
   };
 
   return (
@@ -63,18 +80,18 @@ const Navbar = () => {
         scrolled ? "bg-card/95 backdrop-blur-sm accent-shadow-sm" : "bg-transparent"
       }`}
     >
-      <div className="container mx-auto flex items-center justify-between py-4">
+      <div className="container mx-auto flex items-center justify-between py-4 px-4 md:px-0">
         <Link to="/" className="font-heading text-xl font-bold">
           ALEX<span className="text-accent">_DEV</span>
         </Link>
 
-        {/* Desktop */}
+        {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
             <button
               key={link.href}
-              onClick={() => scrollTo(link.href)}
-              className={`relative font-medium text-sm uppercase tracking-wider transition-colors ${
+              onClick={() => scrollTo(link.id)}
+              className={`relative font-medium text-sm uppercase tracking-wider transition-colors hover:text-accent ${
                 activeSection === link.id ? "text-accent" : ""
               }`}
             >
@@ -96,40 +113,47 @@ const Navbar = () => {
           </Link>
         </div>
 
-        {/* Mobile toggle */}
-        <button className="md:hidden" onClick={() => setIsOpen(!isOpen)}>
+        {/* Mobile Toggle */}
+        <button
+          className="md:hidden p-2 rounded-md hover:bg-accent/10 transition-colors"
+          onClick={() => setIsOpen(!isOpen)}
+          aria-label={isOpen ? "Close menu" : "Open menu"}
+        >
           {isOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile Menu */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-card border-b-2 border-accent"
+            transition={{ duration: 0.25 }}
+            className="md:hidden bg-card border-b-2 border-accent overflow-hidden"
           >
-            <div className="container mx-auto py-4 flex flex-col gap-4">
+            <div className="container mx-auto py-4 px-4 flex flex-col gap-1">
               {navLinks.map((link) => (
                 <button
                   key={link.href}
-                  onClick={() => scrollTo(link.href)}
-                  className={`text-left font-medium text-sm uppercase tracking-wider py-2 ${
-                    activeSection === link.id ? "text-accent" : ""
+                  onClick={() => scrollTo(link.id)}
+                  className={`text-left font-medium text-sm uppercase tracking-wider py-3 px-2 rounded-md transition-colors hover:bg-accent/10 hover:text-accent ${
+                    activeSection === link.id ? "text-accent bg-accent/10" : ""
                   }`}
                 >
                   {link.label}
                 </button>
               ))}
-              <Link
-                to="/admin"
-                className="bg-foreground text-card px-5 py-2 rounded-md text-sm font-semibold text-center"
-                onClick={() => setIsOpen(false)}
-              >
-                Hire Us
-              </Link>
+              <div className="pt-2 border-t border-border mt-2">
+                <Link
+                  to="/admin"
+                  className="block bg-foreground text-card px-5 py-2.5 rounded-md text-sm font-semibold text-center hover:opacity-90 transition-opacity"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Hire Us
+                </Link>
+              </div>
             </div>
           </motion.div>
         )}
