@@ -142,6 +142,15 @@
   }
 }
 
+/* Scrollbar hide utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Swiper custom styles */
 .swiper-pagination-bullet {
   background: hsl(245 17% 67%) !important;
