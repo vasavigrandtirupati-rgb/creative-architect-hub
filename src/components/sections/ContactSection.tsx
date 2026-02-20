@@ -1,16 +1,38 @@
 import { siteData } from "@/data/data";
+import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Send, Mail, Phone, MapPin } from "lucide-react";
+import { Send, Mail, Phone, MapPin, CheckCircle2, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const ContactSection = () => {
   const { email, phone, location } = siteData.personalInfo;
+  const { toast } = useToast();
   const [form, setForm] = useState({ name: "", email: "", type: "Web Application", message: "" });
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    alert("Message sent! (Demo)");
+    if (!form.name.trim() || !form.email.trim() || !form.message.trim()) return;
+
+    setSending(true);
+    try {
+      const { error } = await supabase.from("contact_messages").insert({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        project_type: form.type,
+        message: form.message.trim(),
+      });
+      if (error) throw error;
+      setSent(true);
+      setForm({ name: "", email: "", type: "Web Application", message: "" });
+      toast({ title: "Message sent!", description: "I'll get back to you soon." });
+    } catch (err: any) {
+      toast({ title: "Failed to send", description: err.message, variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -40,63 +62,81 @@ const ContactSection = () => {
           viewport={{ once: true }}
           className="max-w-2xl mx-auto bg-card rounded-lg p-8 accent-shadow"
         >
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid md:grid-cols-2 gap-5">
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider block mb-2">Name</label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="John Doe"
-                  className="w-full px-4 py-3 rounded-md border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider block mb-2">Email</label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="john@example.com"
-                  className="w-full px-4 py-3 rounded-md border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider block mb-2">Project Type</label>
-              <select
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
-                className="w-full px-4 py-3 rounded-md border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          {sent ? (
+            <div className="text-center py-8">
+              <CheckCircle2 size={48} className="mx-auto text-green-600 mb-4" />
+              <h3 className="font-heading font-bold text-lg mb-2">Message Sent!</h3>
+              <p className="text-sm opacity-70 mb-6">Thank you for reaching out. I'll get back to you as soon as possible.</p>
+              <button
+                onClick={() => setSent(false)}
+                className="bg-primary text-foreground px-6 py-2.5 rounded-md font-heading font-bold text-sm hover:opacity-90 transition-opacity accent-shadow-sm"
               >
-                <option>Web Application</option>
-                <option>Mobile App</option>
-                <option>Digital Marketing</option>
-                <option>SEO Optimization</option>
-                <option>Other</option>
-              </select>
+                Send Another Message
+              </button>
             </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider block mb-2">Message</label>
-              <textarea
-                value={form.message}
-                onChange={(e) => setForm({ ...form, message: e.target.value })}
-                placeholder="Tell me about your project..."
-                rows={4}
-                className="w-full px-4 py-3 rounded-md border border-input bg-card text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent"
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full bg-primary text-foreground py-3 rounded-md font-heading font-bold text-sm hover:opacity-90 transition-opacity accent-shadow-sm flex items-center justify-center gap-2"
-            >
-              <Send size={16} /> SEND MESSAGE
-            </button>
-          </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="grid md:grid-cols-2 gap-5">
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider block mb-2">Name</label>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="John Doe"
+                    className="w-full px-4 py-3 rounded-md border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                    required
+                    maxLength={100}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider block mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    placeholder="john@example.com"
+                    className="w-full px-4 py-3 rounded-md border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                    required
+                    maxLength={255}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider block mb-2">Project Type</label>
+                <select
+                  value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value })}
+                  className="w-full px-4 py-3 rounded-md border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                >
+                  <option>Web Application</option>
+                  <option>Mobile App</option>
+                  <option>Digital Marketing</option>
+                  <option>SEO Optimization</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider block mb-2">Message</label>
+                <textarea
+                  value={form.message}
+                  onChange={(e) => setForm({ ...form, message: e.target.value })}
+                  placeholder="Tell me about your project..."
+                  rows={4}
+                  className="w-full px-4 py-3 rounded-md border border-input bg-card text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent"
+                  required
+                  maxLength={1000}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={sending}
+                className="w-full bg-foreground text-card py-3 rounded-md font-heading font-bold text-sm hover:opacity-90 transition-opacity accent-shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {sending ? <><Loader2 size={16} className="animate-spin" /> SENDING...</> : <><Send size={16} /> SEND MESSAGE</>}
+              </button>
+            </form>
+          )}
 
           {/* Contact info */}
           <div className="mt-8 pt-6 border-t border-input grid md:grid-cols-3 gap-4 text-center">

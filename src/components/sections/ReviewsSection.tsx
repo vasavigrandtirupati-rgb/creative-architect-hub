@@ -1,16 +1,11 @@
 import { useSiteData } from "@/context/SiteDataContext";
 import { motion } from "framer-motion";
 import { Star } from "lucide-react";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { EffectCoverflow, Autoplay, Pagination } from "swiper/modules";
-import "swiper/css";
-import "swiper/css/effect-coverflow";
-import "swiper/css/pagination";
 
 const ReviewsSection = () => {
-  const { reviews } = useSiteData();
+  const { reviews, loading } = useSiteData();
 
-  if (reviews.length === 0) return null;
+  if (!loading && reviews.length === 0) return null;
 
   return (
     <section id="reviews" className="bg-primary section-padding">
@@ -25,31 +20,37 @@ const ReviewsSection = () => {
           <span className="block w-16 h-1 bg-accent mt-3" />
         </motion.h2>
 
-        <Swiper
-          effect="coverflow"
-          grabCursor
-          centeredSlides
-          loop={reviews.length >= 3}
-          coverflowEffect={{
-            rotate: 10,
-            stretch: 0,
-            depth: 150,
-            modifier: 1,
-            slideShadows: false,
-          }}
-          autoplay={{ delay: 4000, disableOnInteraction: false }}
-          pagination={{ clickable: true }}
-          modules={[EffectCoverflow, Autoplay, Pagination]}
-          breakpoints={{
-            0: { slidesPerView: 1 },
-            640: { slidesPerView: 1.5 },
-            1024: { slidesPerView: 2.2 },
-          }}
-          className="reviews-swiper !pb-12"
-        >
-          {reviews.map((rev) => (
-            <SwiperSlide key={rev.id} className="!h-auto">
-              <div className="bg-card rounded-lg p-8 accent-shadow text-center h-full flex flex-col items-center">
+        {loading ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-card rounded-lg p-8 accent-shadow text-center animate-pulse">
+                <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4" />
+                <div className="flex justify-center gap-1 mb-4">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <div key={s} className="w-4 h-4 bg-muted rounded" />
+                  ))}
+                </div>
+                <div className="space-y-2 mb-6">
+                  <div className="h-3 bg-muted rounded w-full" />
+                  <div className="h-3 bg-muted rounded w-5/6 mx-auto" />
+                  <div className="h-3 bg-muted rounded w-4/6 mx-auto" />
+                </div>
+                <div className="h-4 bg-muted rounded w-24 mx-auto mb-1" />
+                <div className="h-3 bg-muted rounded w-20 mx-auto" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {reviews.map((rev, i) => (
+              <motion.div
+                key={rev.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="bg-card rounded-lg p-8 accent-shadow text-center h-full flex flex-col items-center card-hover"
+              >
                 {rev.image ? (
                   <img src={rev.image} alt={rev.clientName} className="w-16 h-16 rounded-full object-cover mb-4" />
                 ) : (
@@ -69,10 +70,10 @@ const ReviewsSection = () => {
                 </p>
                 <h4 className="font-heading font-bold text-sm">{rev.clientName}</h4>
                 <p className="text-xs opacity-60">{rev.company}</p>
-              </div>
-            </SwiperSlide>
-          ))}
-        </Swiper>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
