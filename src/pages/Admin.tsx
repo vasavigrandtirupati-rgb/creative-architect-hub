@@ -4,16 +4,28 @@ import { useSiteData, MediaItem } from "@/context/SiteDataContext";
 import { Project, WorkExperience, Review } from "@/data/data";
 import { useAuth } from "@/hooks/useAuth";
 import { uploadFile, deleteFile } from "@/lib/storage";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
   LayoutDashboard, FolderOpen, Briefcase, MessageSquare, Settings, Image as ImageIcon,
   Plus, Edit, Trash2, Eye, EyeOff, ChevronLeft, X, Check, Upload, FileText, Star, Circle, LogOut,
+  Mail, Inbox, CheckCircle2,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 
-type Tab = "dashboard" | "projects" | "experience" | "reviews" | "services" | "media";
+type Tab = "dashboard" | "projects" | "experience" | "reviews" | "services" | "media" | "messages";
+
+interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  project_type: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
 
 const InputField = memo(({ label, value, onChange, placeholder, type = "text" }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
@@ -69,6 +81,10 @@ const Admin = () => {
   const [reviewerImage, setReviewerImage] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Messages state
+  const [messages, setMessages] = useState<ContactMessage[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const resumeInputRef = useRef<HTMLInputElement>(null);
@@ -80,6 +96,48 @@ const Admin = () => {
     }
   }, [user, authLoading, navigate]);
 
+  // Fetch messages when tab changes
+  useEffect(() => {
+    if (activeTab === "messages" || activeTab === "dashboard") {
+      fetchMessages();
+    }
+  }, [activeTab]);
+
+  const fetchMessages = async () => {
+    setMessagesLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("contact_messages")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setMessages((data || []) as ContactMessage[]);
+    } catch (err: any) {
+      console.error("Failed to fetch messages:", err);
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
+
+  const toggleMessageRead = async (id: string, currentRead: boolean) => {
+    try {
+      await supabase.from("contact_messages").update({ is_read: !currentRead }).eq("id", id);
+      setMessages(prev => prev.map(m => m.id === id ? { ...m, is_read: !currentRead } : m));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const deleteMessage = async (id: string) => {
+    try {
+      await supabase.from("contact_messages").delete().eq("id", id);
+      setMessages(prev => prev.filter(m => m.id !== id));
+      toast({ title: "Message deleted" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
   if (authLoading) {
     return <div className="min-h-screen bg-secondary flex items-center justify-center"><p className="opacity-60">Loading...</p></div>;
   }
@@ -87,12 +145,14 @@ const Admin = () => {
 
   const publishedCount = projects.filter(p => p.isPublished).length;
   const draftCount = projects.filter(p => !p.isPublished).length;
+  const unreadMessages = messages.filter(m => !m.is_read).length;
 
-  const sidebarItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  const sidebarItems: { id: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
     { id: "projects", label: "Projects", icon: <FolderOpen size={18} /> },
     { id: "experience", label: "Experience", icon: <Briefcase size={18} /> },
     { id: "reviews", label: "Reviews", icon: <MessageSquare size={18} /> },
+    { id: "messages", label: "Messages", icon: <Inbox size={18} />, badge: unreadMessages },
     { id: "services", label: "Services", icon: <Settings size={18} /> },
     { id: "media", label: "Media", icon: <ImageIcon size={18} /> },
   ];
@@ -278,7 +338,13 @@ const Admin = () => {
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${
                 activeTab === item.id ? "bg-primary text-foreground" : "hover:bg-muted"
               }`}>
-              {item.icon} {item.label}
+              {item.icon}
+              <span className="flex-1 text-left">{item.label}</span>
+              {item.badge ? (
+                <span className="bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                  {item.badge}
+                </span>
+              ) : null}
             </button>
           ))}
         </nav>
@@ -316,12 +382,13 @@ const Admin = () => {
         {/* ─── DASHBOARD ─── */}
         {activeTab === "dashboard" && (
           <div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
               {[
                 { label: "Total Projects", value: projects.length, icon: <FolderOpen size={20} /> },
                 { label: "Published", value: publishedCount, icon: <Eye size={20} /> },
                 { label: "Drafts", value: draftCount, icon: <EyeOff size={20} /> },
                 { label: "Reviews", value: reviews.length, icon: <MessageSquare size={20} /> },
+                { label: "Messages", value: messages.length, icon: <Inbox size={20} />, extra: unreadMessages > 0 ? `${unreadMessages} unread` : undefined },
               ].map(stat => (
                 <div key={stat.label} className="bg-card rounded-lg p-6 accent-shadow">
                   <div className="flex items-center justify-between mb-3">
@@ -329,6 +396,9 @@ const Admin = () => {
                   </div>
                   <p className="text-2xl font-heading font-bold">{stat.value}</p>
                   <p className="text-xs opacity-60 uppercase tracking-wider">{stat.label}</p>
+                  {'extra' in stat && stat.extra && (
+                    <p className="text-[10px] text-destructive font-semibold mt-1">{stat.extra}</p>
+                  )}
                 </div>
               ))}
             </div>
@@ -511,6 +581,87 @@ const Admin = () => {
               ))}
               {reviews.length === 0 && <p className="text-sm opacity-60 text-center py-8 col-span-2">No reviews yet.</p>}
             </div>
+          </div>
+        )}
+
+        {/* ─── MESSAGES ─── */}
+        {activeTab === "messages" && (
+          <div className="bg-card rounded-lg accent-shadow p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-heading font-bold">Contact Messages</h3>
+              <span className="text-xs opacity-60">{messages.length} total · {unreadMessages} unread</span>
+            </div>
+            {messagesLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="p-4 border border-input rounded-lg animate-pulse">
+                    <div className="flex justify-between mb-2">
+                      <div className="h-4 bg-muted rounded w-32" />
+                      <div className="h-3 bg-muted rounded w-24" />
+                    </div>
+                    <div className="h-3 bg-muted rounded w-48 mb-2" />
+                    <div className="h-3 bg-muted rounded w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="text-center py-12">
+                <Inbox size={40} className="mx-auto opacity-20 mb-4" />
+                <p className="text-sm opacity-60">No messages yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {messages.map(msg => (
+                  <div
+                    key={msg.id}
+                    className={`p-4 border rounded-lg transition-colors ${
+                      msg.is_read ? "border-input bg-card" : "border-accent/30 bg-accent/5"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4 mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                          msg.is_read ? "bg-muted" : "bg-accent/20"
+                        }`}>
+                          <Mail size={14} className={msg.is_read ? "opacity-40" : "text-accent"} />
+                        </div>
+                        <div>
+                          <p className={`text-sm ${msg.is_read ? "" : "font-bold"}`}>{msg.name}</p>
+                          <p className="text-xs opacity-60">{msg.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] bg-secondary px-2 py-0.5 rounded font-medium">{msg.project_type}</span>
+                        <span className="text-[10px] opacity-50">
+                          {new Date(msg.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-sm opacity-80 pl-11 mb-3">{msg.message}</p>
+                    <div className="flex items-center gap-2 pl-11">
+                      <button
+                        onClick={() => toggleMessageRead(msg.id, msg.is_read)}
+                        className="text-xs font-medium flex items-center gap-1 px-2 py-1 rounded hover:bg-muted transition-colors"
+                      >
+                        <CheckCircle2 size={12} /> {msg.is_read ? "Mark unread" : "Mark read"}
+                      </button>
+                      <a
+                        href={`mailto:${msg.email}`}
+                        className="text-xs font-medium flex items-center gap-1 px-2 py-1 rounded hover:bg-muted transition-colors"
+                      >
+                        <Mail size={12} /> Reply
+                      </a>
+                      <button
+                        onClick={() => deleteMessage(msg.id)}
+                        className="text-xs font-medium flex items-center gap-1 px-2 py-1 rounded hover:bg-destructive/10 text-destructive transition-colors ml-auto"
+                      >
+                        <Trash2 size={12} /> Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
